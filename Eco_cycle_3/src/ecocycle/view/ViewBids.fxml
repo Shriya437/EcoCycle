@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+<?import javafx.scene.text.Text?>
+
+<BorderPane prefHeight="500.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ecocycle.controller.ViewBidsController">
+    <top>
+        <Label text="View Active Bids" BorderPane.alignment="CENTER">
+            <padding>
+                <Insets bottom="20" top="20" />
+            </padding>
+         <font>
+            <Font name="System Bold" size="24.0" />
+         </font>
+        </Label>
+    </top>
+    <center>
+      <HBox spacing="20.0">
+         <children>
+            <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+               <children>
+                  <Label text="Products with Bids:" />
+                  <ListView fx:id="productList" prefHeight="300.0" />
+               </children>
+            </VBox>
+            <VBox spacing="10.0" HBox.hgrow="NEVER">
+               <children>
+                  <Label text="Bid Details:" />
+                  <Text fx:id="bidDetailsText" wrappingWidth="200.0" />
+                  <Button fx:id="acceptBidButton" disable="true" onAction="#handleAcceptBid" text="Accept Highest Bid" />
+                  <Label fx:id="infoLabel" />
+               </children>
+            </VBox>
+         </children>
+         <BorderPane.margin>
+            <Insets left="20.0" right="20.0" />
+         </BorderPane.margin>
+      </HBox>
+    </center>
+    <bottom>
+        <VBox alignment="CENTER" prefHeight="75.0" BorderPane.alignment="CENTER">
+            <Button onAction="#handleBack" prefWidth="150.0" text="Back to Dashboard" />
+        </VBox>
+    </bottom>
+</BorderPane>

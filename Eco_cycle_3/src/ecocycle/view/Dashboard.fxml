@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane prefHeight="400.0" prefWidth="400.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ecocycle.controller.DashboardController">
+    <top>
+        <VBox alignment="CENTER" spacing="5.0" BorderPane.alignment="CENTER">
+            <padding>
+                <Insets bottom="20" top="20" />
+            </padding>
+            <Label fx:id="welcomeLabel" text="Welcome, [Username]!">
+               <font>
+                  <Font name="System Bold" size="24.0" />
+               </font>
+            </Label>
+            <Label fx:id="statsLabel" text="Credits: 0.0 | Total Sales: ₹0.00" />
+        </VBox>
+    </top>
+    <center>
+        <VBox fx:id="buttonContainer" alignment="CENTER" spacing="15.0" />
+    </center>
+    <bottom>
+        <VBox alignment="CENTER" spacing="10.0" BorderPane.alignment="CENTER">
+             <padding>
+                <Insets bottom="20" />
+            </padding>
+            <Button onAction="#handleLeaderboards" prefWidth="200.0" text="View Leaderboards" />
+            <Button onAction="#handleLogout" prefWidth="150.0" text="Logout" textFill="RED" />
+        </VBox>
+    </bottom>
+</BorderPane>

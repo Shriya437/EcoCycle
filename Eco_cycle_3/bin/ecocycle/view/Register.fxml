@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox alignment="CENTER" spacing="20.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ecocycle.controller.RegisterController">
+    <padding>
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+    </padding>
+
+    <Label text="Create Account">
+      <font>
+         <Font name="System Bold" size="24.0" />
+      </font>
+    </Label>
+
+    <GridPane hgap="10" vgap="10">
+        <padding>
+            <Insets top="20" />
+        </padding>
+
+        <Label text="Username:" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+        <TextField fx:id="usernameField" promptText="Choose a username" GridPane.rowIndex="0" GridPane.columnIndex="1" />
+
+        <Label text="Password:" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+        <PasswordField fx:id="passwordField" promptText="Create a password" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+
+        <Label text="Confirm:" GridPane.rowIndex="2" GridPane.columnIndex="0" />
+        <PasswordField fx:id="confirmPasswordField" promptText="Confirm password" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+
+        <Label text="I am a:" GridPane.rowIndex="3" GridPane.columnIndex="0" />
+        <ComboBox fx:id="roleComboBox" prefWidth="200.0" promptText="Select a role" GridPane.rowIndex="3" GridPane.columnIndex="1" />
+
+    </GridPane>
+
+    <Button onAction="#handleRegister" prefWidth="200.0" text="Register" />
+    <Hyperlink onAction="#handleLoginLink" text="Already have an account? Login" />
+    
+    <Label fx:id="errorLabel" textFill="RED" />
+
+</VBox>
