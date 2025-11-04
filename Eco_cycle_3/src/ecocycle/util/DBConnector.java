@@ -10,7 +10,7 @@ public class DBConnector {
     // --- !! YOU MUST EDIT THESE 3 LINES !! ---
     private static final String URL = "jdbc:mysql://localhost:3306/ecocycle_db?useSSL=false";
     private static final String USER = "root";
-    private static final String PASSWORD = "Herondale@32"; // <-- !! EDIT THIS !!
+    private static final String PASSWORD = "root"; // <-- !! EDIT THIS !!
 
     // Private constructor to prevent instantiation
     private DBConnector() {}
