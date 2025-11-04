@@ -39,6 +39,16 @@ public class SceneNavigator {
             // Create a new scene with the loaded FXML
             Scene scene = new Scene(root);
             
+            // --- THIS IS THE FIX ---
+            // We must apply the stylesheet to every new scene we create.
+            URL cssUrl = SceneNavigator.class.getResource("/ecocycle/view/style.css");
+            if (cssUrl != null) {
+                scene.getStylesheets().add(cssUrl.toExternalForm());
+            } else {
+                System.err.println("Error: Could not find style.css file.");
+            }
+            // --- END OF FIX ---
+            
             // Set the new scene on the stage
             stage.setScene(scene);
             

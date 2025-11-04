@@ -9,42 +9,47 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp; // Keep this for the transactions table
 import java.util.*;
 
 /**
- * Data Service (JDBC Version)
- * This class now handles all database operations, replacing the
- * in-memory lists with SQL queries.
- *
- * All public method signatures remain the same, so no
- * controllers need to be changed.
+ * Data Service (JDBC Version - No Streams)
+ * This is the final, complete service class.
+ * - Uses JDBC for all database operations.
+ * - Uses traditional for-loops and null checks (no streams).
+ * - Implements Stack logic for "Undo Delete".
+ * - Implements LinkedList logic for "Global Review Feed".
  */
 public class DataService {
 
-    // --- All in-memory lists are now GONE ---
-    // private static final List<User> users = new ArrayList<>();
-    // private static final List<Product> products = new ArrayList<>();
-    // ...etc...
-
-    // --- Session Management (Stays the same) ---
+    // --- Session Management ---
     private static User currentUser = null;
 
-    // --- Simulation Constants (Stays the same) ---
+    // --- Simulation Constants ---
     private static final long MINUTE_MS = 60_000;
     private static final Map<String, Long> RECYCLING_THRESHOLDS_MS = new HashMap<>();
     private static final long DEFAULT_RECYCLING_THRESHOLD_MS = 3 * MINUTE_MS;
+    
+    // --- DSA Feature: "Undo Delete" Stack ---
+    private static Stack<Product> undoStack = new Stack<>();
+
+    // --- DSA Feature: "Global Review Feed" LinkedList ---
+    private static LinkedList<Review> globalReviewFeed = new LinkedList<>();
+
+    // --- DSA Feature: "Undo Remove from Cart" Stack ---
+    private static Stack<Product> removedCartItems = new Stack<>();
+
 
     /**
      * Static block to initialize mock data AND recycling rules
      */
     static {
-        // Init time thresholds (still in-memory, that's fine)
+        // Init time thresholds
         RECYCLING_THRESHOLDS_MS.put("clothing", 1 * MINUTE_MS);
         RECYCLING_THRESHOLDS_MS.put("electronics", 2 * MINUTE_MS);
         RECYCLING_THRESHOLDS_MS.put("plastic", 1 * MINUTE_MS);
         RECYCLING_THRESHOLDS_MS.put("furniture", 3 * MINUTE_MS);
         
-        // This method will populate the DB with demo data (if it's empty)
         initializeDemoData();
     }
 
@@ -60,12 +65,12 @@ public class DataService {
 
             if (rs.next()) {
                 System.out.println("Database already contains data. Skipping demo data insertion.");
-                return; // Data already exists
+                loadReviewFeedCache();
+                return;
             }
 
             System.out.println("Database is empty. Inserting demo data...");
             
-            // Use Statement for batch insertion
             try (Statement stmt = con.createStatement()) {
                 // 1. Create Users
                 stmt.executeUpdate("INSERT INTO users (user_id, username, password, role) VALUES ('u_s1', 'seller_A', 'pass', 'SELLER')");
@@ -78,7 +83,6 @@ public class DataService {
                 stmt.executeUpdate("INSERT INTO products (product_id, name, type, category, description, price, seller_id, status) VALUES " +
                     "('p_01', 'Old Laptop', 'Electronics', 'Electronics', 15000.00, '5yr old laptop', 'u_s1', 'AVAILABLE')");
                 
-                // We must use PreparedStatement for precise timestamp insertion
                 String p2Sql = "INSERT INTO products (product_id, name, type, category, description, price, seller_id, status, upload_timestamp) VALUES " +
                                "('p_02', 'Vintage Jeans', 'Clothing', 'Clothing', 2500.00, '90s denim', 'u_s1', 'AVAILABLE', ?)";
                 try (PreparedStatement p2Stmt = con.prepareStatement(p2Sql)) {
@@ -97,12 +101,37 @@ public class DataService {
             e.printStackTrace();
         }
     }
+    
+    /**
+     * Loads existing reviews from the DB into the LinkedList cache on startup.
+     */
+    private static void loadReviewFeedCache() {
+        String sql = "SELECT review_id, product_id, buyer_id, text, timestamp FROM reviews ORDER BY timestamp DESC";
+        try (Connection con = DBConnector.getConnection();
+             PreparedStatement pstmt = con.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+            
+            while (rs.next()) {
+                Review review = new Review(
+                    rs.getString("review_id"),
+                    rs.getString("product_id"),
+                    rs.getString("buyer_id"),
+                    rs.getString("text")
+                );
+                
+                // --- FIX #1: Read a long, not a Timestamp ---
+                review.setTimestamp(rs.getLong("timestamp"));
+                
+                globalReviewFeed.add(review);
+            }
+            System.out.println("Loaded " + globalReviewFeed.size() + " reviews into cache.");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 
     // --- NEW HELPER METHODS (for JDBC) ---
     
-    /**
-     * Creates a User object from a single row in a ResultSet.
-     */
     private static User inflateUser(ResultSet rs) throws SQLException {
         User user = new User(
             rs.getString("user_id"),
@@ -115,10 +144,6 @@ public class DataService {
         return user;
     }
 
-    /**
-     * Creates a Product object from a ResultSet.
-     * This method ALSO fetches and inflates the product's bids.
-     */
     private static Product inflateProduct(ResultSet rs) throws SQLException {
         String productId = rs.getString("product_id");
         Product product = new Product(
@@ -131,11 +156,13 @@ public class DataService {
             rs.getString("seller_id")
         );
         product.setStatus(ProductStatus.valueOf(rs.getString("status")));
-        product.setUploadTimestamp(rs.getTimestamp("upload_timestamp").getTime());
+        java.sql.Timestamp ts = rs.getTimestamp("upload_timestamp");
+        if (ts != null) {
+            product.setUploadTimestamp(ts.getTime());
+        } else {
+            product.setUploadTimestamp(System.currentTimeMillis());
+        }
         
-        // --- SEAMLESS INTEGRATION ---
-        // The controllers expect the Product's bid list to be populated.
-        // We will fetch them from the `recycling_bids` table.
         String bidSql = "SELECT * FROM recycling_bids WHERE product_id = ?";
         try (Connection con = DBConnector.getConnection();
              PreparedStatement bidStmt = con.prepareStatement(bidSql)) {
@@ -147,10 +174,10 @@ public class DataService {
                         bidRs.getString("recycler_id"),
                         bidRs.getDouble("bid_price")
                     );
-                    product.getBids().add(bid); // Add to the PriorityQueue
+                    product.getBids().add(bid);
                 }
             }
-        } // The product object is now "fully hydrated"
+        }
         
         return product;
     }
@@ -216,10 +243,8 @@ public class DataService {
     // --- User & Session Management (JDBC) ---
     
     public static User login(String username, String password) {
-        // Find user by username
         User user = findUserByUsername(username);
         
-        // Check password (in a real app, use hashing!)
         if (user != null && user.getPassword().equals(password)) {
             currentUser = user;
             return currentUser;
@@ -238,7 +263,7 @@ public class DataService {
 
     public static boolean register(String username, String password, Role role) {
         if (findUserByUsername(username) != null) {
-            return false; // Username taken
+            return false;
         }
         String userId = "u_" + UUID.randomUUID().toString().substring(0, 8);
         
@@ -249,7 +274,7 @@ public class DataService {
             pstmt.setString(1, userId);
             pstmt.setString(2, username);
             pstmt.setString(3, password);
-            pstmt.setString(4, role.name()); // e.g., "SELLER"
+            pstmt.setString(4, role.name());
             
             int rowsAffected = pstmt.executeUpdate();
             return rowsAffected > 0;
@@ -273,7 +298,7 @@ public class DataService {
             pstmt.setString(1, currentUser.getUserId());
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    userProducts.add(inflateProduct(rs)); // Inflate product + its bids
+                    userProducts.add(inflateProduct(rs));
                 }
             }
         } catch (SQLException e) {
@@ -307,24 +332,6 @@ public class DataService {
             e.printStackTrace();
         }
     }
-    
-    public static boolean deleteProduct(String productId) {
-        String sql = "DELETE FROM products WHERE product_id = ? AND seller_id = ? AND (status = 'AVAILABLE' OR status = 'AVAILABLE_NO_RECYCLE')";
-        
-        try (Connection con = DBConnector.getConnection();
-             PreparedStatement pstmt = con.prepareStatement(sql)) {
-            
-            pstmt.setString(1, productId);
-            pstmt.setString(2, currentUser.getUserId());
-            
-            int rowsAffected = pstmt.executeUpdate();
-            return rowsAffected > 0;
-            
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
 
     private static boolean isProductEligibleForRecycling(Product p) {
         if (p == null || p.getStatus() != ProductStatus.AVAILABLE) {
@@ -338,7 +345,6 @@ public class DataService {
         List<Product> eligible = new ArrayList<>();
         if (currentUser == null) return eligible;
         
-        // 1. Get all of the seller's available products
         String sql = "SELECT * FROM products WHERE seller_id = ? AND status = 'AVAILABLE'";
         try (Connection con = DBConnector.getConnection();
              PreparedStatement pstmt = con.prepareStatement(sql)) {
@@ -346,9 +352,7 @@ public class DataService {
             pstmt.setString(1, currentUser.getUserId());
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    // 2. Inflate the product (which gets its bids, though likely 0)
                     Product p = inflateProduct(rs);
-                    // 3. Check the time-based logic in Java
                     if (isProductEligibleForRecycling(p)) {
                         eligible.add(p);
                     }
@@ -378,7 +382,6 @@ public class DataService {
         List<Product> biddable = new ArrayList<>();
         if (currentUser == null) return biddable;
         
-        // SQL query to get only products that have at least one bid
         String sql = "SELECT p.* FROM products p " +
                      "WHERE p.seller_id = ? AND p.status = 'PENDING_RECYCLING' " +
                      "AND p.product_id IN (SELECT DISTINCT rb.product_id FROM recycling_bids rb)";
@@ -389,7 +392,7 @@ public class DataService {
             pstmt.setString(1, currentUser.getUserId());
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    biddable.add(inflateProduct(rs)); // Inflates product + bids
+                    biddable.add(inflateProduct(rs));
                 }
             }
         } catch (SQLException e) {
@@ -406,9 +409,8 @@ public class DataService {
             con = DBConnector.getConnection();
             con.setAutoCommit(false); // Start transaction
 
-            // 1. Find the highest bid
             RecyclingBid winningBid = null;
-            Product p = findProductById(productId); // Get product to find seller
+            Product p = findProductById(productId); 
             if (p == null) throw new SQLException("Product not found.");
 
             try (PreparedStatement findBidStmt = con.prepareStatement(findBidSql)) {
@@ -424,7 +426,6 @@ public class DataService {
             }
             if (winningBid == null) throw new SQLException("No winning bid found.");
 
-            // 2. Update seller's sales
             String updateSellerSql = "UPDATE users SET total_sales = total_sales + ? WHERE user_id = ?";
             try (PreparedStatement updateSellerStmt = con.prepareStatement(updateSellerSql)) {
                 updateSellerStmt.setDouble(1, winningBid.bidPrice());
@@ -432,21 +433,19 @@ public class DataService {
                 updateSellerStmt.executeUpdate();
             }
 
-            // 3. Update product status
             String updateProductSql = "UPDATE products SET status = 'RECYCLING_PURCHASED' WHERE product_id = ?";
             try (PreparedStatement updateProductStmt = con.prepareStatement(updateProductSql)) {
                 updateProductStmt.setString(1, productId);
                 updateProductStmt.executeUpdate();
             }
             
-            // 4. Clear ALL bids for this product
             String deleteBidsSql = "DELETE FROM recycling_bids WHERE product_id = ?";
             try (PreparedStatement deleteBidsStmt = con.prepareStatement(deleteBidsSql)) {
                 deleteBidsStmt.setString(1, productId);
                 deleteBidsStmt.executeUpdate();
             }
 
-            con.commit(); // Commit all changes
+            con.commit(); 
             return winningBid;
 
         } catch (SQLException e) {
@@ -454,7 +453,7 @@ public class DataService {
             if (con != null) {
                 try { con.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
             }
-            return null; // Return null on failure
+            return null;
         } finally {
             if (con != null) {
                 try { con.setAutoCommit(true); } catch (SQLException ex) { ex.printStackTrace(); }
@@ -464,82 +463,51 @@ public class DataService {
 
     // --- Buyer Logic (JDBC) ---
 
- // PASTE THESE 2 METHODS INTO: src/ecocycle/service/DataService.java
- // You can replace your old getAvailableProducts() method with these.
+    public static List<Product> getAvailableProducts(String category, double minPrice, double maxPrice, boolean sortByPriceAsc) {
+        List<Product> available = new ArrayList<>();
+        
+        StringBuilder sql = new StringBuilder("SELECT * FROM products WHERE (status = 'AVAILABLE' OR status = 'AVAILABLE_NO_RECYCLE') ");
+        List<Object> params = new ArrayList<>();
 
- /**
-  * Gets all available products. This is the original method
-  * that the controller's initialize() method can call.
-  */
- public static List<Product> getAvailableProducts() {
-     // Call the new, powerful method with default values (no filter, newest first)
-     return getAvailableProducts("All", 0, Double.MAX_VALUE, false);
- }
+        if (category != null && !category.isEmpty() && !category.equals("All")) {
+            sql.append("AND category = ? ");
+            params.add(category);
+        }
+        if (minPrice > 0) {
+            sql.append("AND price >= ? ");
+            params.add(minPrice);
+        }
+        if (maxPrice > 0 && maxPrice != Double.MAX_VALUE) {
+            sql.append("AND price <= ? ");
+            params.add(maxPrice);
+        }
+        if (sortByPriceAsc) {
+            sql.append("ORDER BY price ASC");
+        } else {
+            sql.append("ORDER BY upload_timestamp DESC");
+        }
 
- /**
-  * NEW: Gets available products with filtering and sorting.
-  * @param category The category to filter by (or "All")
-  * @param minPrice The minimum price (or 0)
-  * @param maxPrice The maximum price (or Double.MAX_VALUE)
-  * @param sortByPriceAsc True to sort by price (low-high), False to sort by date (newest)
-  * @return A filtered and sorted list of products.
-  */
- public static List<Product> getAvailableProducts(String category, double minPrice, double maxPrice, boolean sortByPriceAsc) {
-     List<Product> available = new ArrayList<>();
-     
-     // 1. Build a dynamic SQL query
-     // We use StringBuilder to safely add conditions.
-     StringBuilder sql = new StringBuilder("SELECT * FROM products WHERE (status = 'AVAILABLE' OR status = 'AVAILABLE_NO_RECYCLE') ");
-     
-     // This list will hold the parameters for our PreparedStatement
-     List<Object> params = new ArrayList<>();
+        try (Connection con = DBConnector.getConnection();
+             PreparedStatement pstmt = con.prepareStatement(sql.toString())) {
 
-     // Add category filter if it's not "All"
-     if (category != null && !category.isEmpty() && !category.equals("All")) {
-         sql.append("AND category = ? ");
-         params.add(category);
-     }
-
-     // Add min price filter
-     if (minPrice > 0) {
-         sql.append("AND price >= ? ");
-         params.add(minPrice);
-     }
-
-     // Add max price filter
-     if (maxPrice > 0 && maxPrice != Double.MAX_VALUE) {
-         sql.append("AND price <= ? ");
-         params.add(maxPrice);
-     }
-
-     // 2. Add sorting
-     if (sortByPriceAsc) {
-         sql.append("ORDER BY price ASC");
-     } else {
-         sql.append("ORDER BY upload_timestamp DESC");
-     }
-
-     // 3. Execute the query
-     try (Connection con = DBConnector.getConnection();
-          PreparedStatement pstmt = con.prepareStatement(sql.toString())) {
-
-         // 4. Safely set all the parameters we added
-         for (int i = 0; i < params.size(); i++) {
-             // Use setObject, which works for both String and Double
-             pstmt.setObject(i + 1, params.get(i));
-         }
-         
-         try (ResultSet rs = pstmt.executeQuery()) {
-             while (rs.next()) {
-                 // The inflateProduct helper method does all the hard work!
-                 available.add(inflateProduct(rs));
-             }
-         }
-     } catch (SQLException e) {
-         e.printStackTrace();
-     }
-     return available;
- }
+            for (int i = 0; i < params.size(); i++) {
+                pstmt.setObject(i + 1, params.get(i));
+            }
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    available.add(inflateProduct(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return available;
+    }
+    
+    public static List<Product> getAvailableProducts() {
+        return getAvailableProducts("All", 0, Double.MAX_VALUE, false);
+    }
 
     public static boolean addToCart(String productId) {
         Product p = findProductById(productId);
@@ -589,16 +557,14 @@ public class DataService {
     public static boolean purchaseCart() {
         if (currentUser == null) return false;
         
-        // 1. Get cart items first
         List<Product> cartItems = getCart();
-        if (cartItems.isEmpty()) return true; // Nothing to purchase
+        if (cartItems.isEmpty()) return true;
         
         Connection con = null;
         try {
             con = DBConnector.getConnection();
-            con.setAutoCommit(false); // Start transaction
+            con.setAutoCommit(false); 
 
-            // 2. Prepare all SQL statements
             String updateProdSql = "UPDATE products SET status = 'SOLD' WHERE product_id = ?";
             String updateSellerSql = "UPDATE users SET total_sales = total_sales + ? WHERE user_id = ?";
             String insertTransSql = "INSERT INTO transactions (transaction_id, buyer_id, product_id, price, timestamp, status) VALUES (?, ?, ?, ?, ?, ?)";
@@ -608,39 +574,104 @@ public class DataService {
                  PreparedStatement insertTransStmt = con.prepareStatement(insertTransSql)) {
                 
                 for (Product p : cartItems) {
-                    // Check if it's still available (important for concurrency)
                     if (p.getStatus() == ProductStatus.AVAILABLE || p.getStatus() == ProductStatus.AVAILABLE_NO_RECYCLE) {
                         
-                        // Update product
                         updateProdStmt.setString(1, p.getProductId());
                         updateProdStmt.executeUpdate();
 
-                        // Update seller sales
                         updateSellerStmt.setDouble(1, p.getPrice());
                         updateSellerStmt.setString(2, p.getSellerId());
                         updateSellerStmt.executeUpdate();
 
-                        // Add transaction log
                         String tid = "t_" + UUID.randomUUID().toString().substring(0, 8);
                         insertTransStmt.setString(1, tid);
                         insertTransStmt.setString(2, currentUser.getUserId());
                         insertTransStmt.setString(3, p.getProductId());
                         insertTransStmt.setDouble(4, p.getPrice());
-                        insertTransStmt.setLong(5, System.currentTimeMillis());
+                        insertTransStmt.setTimestamp(5, new java.sql.Timestamp(System.currentTimeMillis()));
                         insertTransStmt.setString(6, TransactionStatus.COMPLETED.name());
                         insertTransStmt.executeUpdate();
                     }
                 }
             }
             
-            // 3. Clear the user's cart
             String deleteCartSql = "DELETE FROM cart WHERE buyer_id = ?";
             try (PreparedStatement deleteCartStmt = con.prepareStatement(deleteCartSql)) {
                 deleteCartStmt.setString(1, currentUser.getUserId());
                 deleteCartStmt.executeUpdate();
             }
 
-            con.commit(); // All good, commit
+            con.commit();
+            return true;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            if (con != null) {
+                try { con.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+            return false;
+        } finally {
+            if (con != null) {
+                try { con.setAutoCommit(true); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+        }
+    }
+
+    public static boolean purchaseSingleItem(String productId) {
+        if (currentUser == null) return false;
+
+        Product p = findProductById(productId);
+        if (p == null) return false;
+        
+        boolean inCart = false;
+        List<Product> cartItems = getCart();
+        for (Product cartItem : cartItems) {
+            if (cartItem.getProductId().equals(productId)) {
+                inCart = true;
+                break;
+            }
+        }
+        if (!inCart) {
+            return false;
+        }
+
+        Connection con = null;
+        try {
+            con = DBConnector.getConnection();
+            con.setAutoCommit(false); 
+
+            String updateProdSql = "UPDATE products SET status = 'SOLD' WHERE product_id = ?";
+            String updateSellerSql = "UPDATE users SET total_sales = total_sales + ? WHERE user_id = ?";
+            String insertTransSql = "INSERT INTO transactions (transaction_id, buyer_id, product_id, price, timestamp, status) VALUES (?, ?, ?, ?, ?, ?)";
+            String deleteCartSql = "DELETE FROM cart WHERE buyer_id = ? AND product_id = ?";
+
+            try (PreparedStatement updateProdStmt = con.prepareStatement(updateProdSql);
+                 PreparedStatement updateSellerStmt = con.prepareStatement(updateSellerSql);
+                 PreparedStatement insertTransStmt = con.prepareStatement(insertTransSql);
+                 PreparedStatement deleteCartStmt = con.prepareStatement(deleteCartSql)) {
+
+                updateProdStmt.setString(1, p.getProductId());
+                updateProdStmt.executeUpdate();
+
+                updateSellerStmt.setDouble(1, p.getPrice());
+                updateSellerStmt.setString(2, p.getSellerId());
+                updateSellerStmt.executeUpdate();
+
+                String tid = "t_" + UUID.randomUUID().toString().substring(0, 8);
+                insertTransStmt.setString(1, tid);
+                insertTransStmt.setString(2, currentUser.getUserId());
+                insertTransStmt.setString(3, p.getProductId());
+                insertTransStmt.setDouble(4, p.getPrice());
+                insertTransStmt.setTimestamp(5, new java.sql.Timestamp(System.currentTimeMillis()));
+                insertTransStmt.setString(6, TransactionStatus.COMPLETED.name());
+                insertTransStmt.executeUpdate();
+                
+                deleteCartStmt.setString(1, currentUser.getUserId());
+                deleteCartStmt.setString(2, p.getProductId());
+                deleteCartStmt.executeUpdate();
+            }
+            
+            con.commit();
             return true;
 
         } catch (SQLException e) {
@@ -670,12 +701,15 @@ public class DataService {
             pstmt.setString(1, currentUser.getUserId());
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
+                    // Read Timestamp from DB, convert to long
+                    long timestamp = rs.getTimestamp("timestamp").getTime();
+                    
                     userTransactions.add(new Transaction(
                         rs.getString("transaction_id"),
                         rs.getString("buyer_id"),
                         rs.getString("product_id"),
                         rs.getDouble("price"),
-                        rs.getLong("timestamp"),
+                        timestamp, // Use the converted long
                         TransactionStatus.valueOf(rs.getString("status"))
                     ));
                 }
@@ -684,6 +718,24 @@ public class DataService {
             e.printStackTrace();
         }
         return userTransactions;
+    }
+    
+    public static boolean hasBuyerPurchasedProduct(String userId, String productId) {
+        String sql = "SELECT 1 FROM transactions WHERE buyer_id = ? AND product_id = ? AND status = 'COMPLETED' LIMIT 1";
+        
+        try (Connection con = DBConnector.getConnection();
+             PreparedStatement pstmt = con.prepareStatement(sql)) {
+            
+            pstmt.setString(1, userId);
+            pstmt.setString(2, productId);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     // --- Recycler Logic (JDBC) ---
@@ -697,7 +749,7 @@ public class DataService {
              ResultSet rs = pstmt.executeQuery()) {
             
             while (rs.next()) {
-                eligible.add(inflateProduct(rs)); // Inflates product + bids
+                eligible.add(inflateProduct(rs)); 
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -708,7 +760,7 @@ public class DataService {
     public static boolean placeBid(String productId, double bidPrice) {
         if (currentUser == null || currentUser.getRole() != Role.RECYCLER) return false;
         
-        Product p = findProductById(productId); // Check product status
+        Product p = findProductById(productId); 
         if (p == null || p.getStatus() != ProductStatus.PENDING_RECYCLING) return false;
         
         if (bidPrice >= p.getBaseCost()) {
@@ -734,8 +786,6 @@ public class DataService {
         List<Product> acquired = new ArrayList<>();
         if (currentUser == null) return acquired;
 
-        // In a real app, we'd have a column on 'products' for 'winning_recycler_id'
-        // For now, this is fine.
         String sql = "SELECT * FROM products WHERE status = 'RECYCLING_PURCHASED'";
         
         try (Connection con = DBConnector.getConnection();
@@ -762,21 +812,18 @@ public class DataService {
         Connection con = null;
         try {
             con = DBConnector.getConnection();
-            con.setAutoCommit(false); // Start transaction
+            con.setAutoCommit(false);
             
-            // 1. Update product status
             String updateProdSql = "UPDATE products SET status = 'RECYCLED' WHERE product_id = ?";
             try (PreparedStatement pstmt = con.prepareStatement(updateProdSql)) {
                 pstmt.setString(1, productId);
                 pstmt.executeUpdate();
             }
             
-            // 2. Distribute credits
             int totalCredits = p.getCarbonValue();
             double recyclerShare = totalCredits * 0.70;
             double sellerShare = totalCredits * 0.30;
             
-            // 3. Update recycler
             String updateRecyclerSql = "UPDATE users SET carbon_credits = carbon_credits + ? WHERE user_id = ?";
             try (PreparedStatement pstmt = con.prepareStatement(updateRecyclerSql)) {
                 pstmt.setDouble(1, recyclerShare);
@@ -784,7 +831,6 @@ public class DataService {
                 pstmt.executeUpdate();
             }
 
-            // 4. Update seller
             String updateSellerSql = "UPDATE users SET carbon_credits = carbon_credits + ? WHERE user_id = ?";
             try (PreparedStatement pstmt = con.prepareStatement(updateSellerSql)) {
                 pstmt.setDouble(1, sellerShare);
@@ -792,7 +838,7 @@ public class DataService {
                 pstmt.executeUpdate();
             }
             
-            con.commit(); // All good
+            con.commit();
             return true;
             
         } catch (SQLException e) {
@@ -842,5 +888,169 @@ public class DataService {
             e.printStackTrace();
         }
         return recyclers;
+    }
+
+    // --- DSA Feature: "Undo Delete" Stack ---
+
+    public static boolean archiveProductForUndo(String productId) {
+        Product productToArchive = findProductById(productId);
+        
+        if (productToArchive == null || !productToArchive.getSellerId().equals(currentUser.getUserId())) {
+            return false;
+        }
+        
+        if (productToArchive.getStatus() != ProductStatus.AVAILABLE && productToArchive.getStatus() != ProductStatus.AVAILABLE_NO_RECYCLE) {
+            return false;
+        }
+
+        String sql = "DELETE FROM products WHERE product_id = ?";
+        try (Connection con = DBConnector.getConnection();
+             PreparedStatement pstmt = con.prepareStatement(sql)) {
+            
+            pstmt.setString(1, productId);
+            int rowsAffected = pstmt.executeUpdate();
+
+            if (rowsAffected > 0) {
+                undoStack.push(productToArchive);
+                return true;
+            }
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public static Product restoreLastDeletedProduct() {
+        if (undoStack.isEmpty()) {
+            return null;
+        }
+        
+        Product productToRestore = undoStack.pop();
+        
+        String sql = "INSERT INTO products (product_id, name, type, category, price, description, seller_id, status, upload_timestamp) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        
+        try (Connection con = DBConnector.getConnection();
+             PreparedStatement pstmt = con.prepareStatement(sql)) {
+            
+            pstmt.setString(1, productToRestore.getProductId());
+            pstmt.setString(2, productToRestore.getName());
+            pstmt.setString(3, productToRestore.getType());
+            pstmt.setString(4, productToRestore.getCategory());
+            pstmt.setDouble(5, productToRestore.getPrice());
+            pstmt.setString(6, productToRestore.getDescription());
+            pstmt.setString(7, productToRestore.getSellerId());
+            pstmt.setString(8, productToRestore.getStatus().name());
+            pstmt.setTimestamp(9, new java.sql.Timestamp(productToRestore.getUploadTimestamp()));
+            
+            pstmt.executeUpdate();
+            return productToRestore;
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+            undoStack.push(productToRestore);
+            return null;
+        }
+    }
+
+    public static boolean canUndoDelete() {
+        return !undoStack.isEmpty();
+    }
+
+    // --- DSA Feature: "Global Review Feed" LinkedList ---
+
+    public static boolean submitReview(String productId, String text) {
+        if (currentUser == null) return false;
+        
+        String reviewId = "r_" + UUID.randomUUID().toString().substring(0, 8);
+        long timestamp = System.currentTimeMillis();
+        
+        // --- FIX: Removed 'rating' from SQL ---
+        String sql = "INSERT INTO reviews (review_id, product_id, buyer_id, text, timestamp) VALUES (?, ?, ?, ?, ?)";
+        try (Connection con = DBConnector.getConnection();
+             PreparedStatement pstmt = con.prepareStatement(sql)) {
+            
+            pstmt.setString(1, reviewId);
+            pstmt.setString(2, productId);
+            pstmt.setString(3, currentUser.getUserId());
+            pstmt.setString(4, text);
+            
+            // --- FIX: Use setTimestamp, not setLong ---
+            pstmt.setTimestamp(5, new java.sql.Timestamp(timestamp)); 
+            
+            int rowsAffected = pstmt.executeUpdate();
+            if (rowsAffected > 0) {
+                // --- FIX: Use updated constructor (no rating) ---
+                Review newReview = new Review(reviewId, productId, currentUser.getUserId(), text);
+                newReview.setTimestamp(timestamp);
+                globalReviewFeed.addFirst(newReview); // O(1) insertion
+                return true;
+            }
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    
+    public static LinkedList<Review> getGlobalReviewFeed() {
+        return globalReviewFeed;
+    }
+    
+    // --- NEW DSA Feature: "Undo Remove from Cart" Stack ---
+    
+    public static boolean removeItemFromCart(String productId) {
+        if (currentUser == null) return false;
+
+        Product productToRemove = findProductById(productId);
+        if (productToRemove == null) {
+            return false;
+        }
+
+        String sql = "DELETE FROM cart WHERE buyer_id = ? AND product_id = ?";
+        try (Connection con = DBConnector.getConnection();
+             PreparedStatement pstmt = con.prepareStatement(sql)) {
+            
+            pstmt.setString(1, currentUser.getUserId());
+            pstmt.setString(2, productId);
+            
+            int rowsAffected = pstmt.executeUpdate();
+            if (rowsAffected > 0) {
+                removedCartItems.push(productToRemove);
+                return true;
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public static Product restoreLastRemovedItem() {
+        if (removedCartItems.isEmpty()) {
+            return null;
+        }
+        
+        Product productToRestore = removedCartItems.pop();
+        
+        String sql = "INSERT INTO cart (buyer_id, product_id) VALUES (?, ?)";
+        try (Connection con = DBConnector.getConnection();
+             PreparedStatement pstmt = con.prepareStatement(sql)) {
+            
+            pstmt.setString(1, currentUser.getUserId());
+            pstmt.setString(2, productToRestore.getProductId());
+            pstmt.executeUpdate();
+            return productToRestore;
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+            removedCartItems.push(productToRestore);
+            return null;
+        }
+    }
+    
+    public static boolean canUndoRemove() {
+        return !removedCartItems.isEmpty();
     }
 }

@@ -8,9 +8,14 @@ import java.sql.SQLException;
 public class DBConnector {
 
     // --- !! YOU MUST EDIT THESE 3 LINES !! ---
-    private static final String URL = "jdbc:mysql://localhost:3306/ecocycle_db?useSSL=false";
+    
+    // --- THIS IS THE FIX ---
+    // We add "&allowPublicKeyRetrieval=true" to the end of the URL.
+    // This tells the driver it's allowed to get the key from the server.
+    private static final String URL = "jdbc:mysql://localhost:3306/ecocycle_db?useSSL=false&allowPublicKeyRetrieval=true";
+    
     private static final String USER = "root";
-    private static final String PASSWORD = "root"; // <-- !! EDIT THIS !!
+    private static final String PASSWORD = "Herondale@32"; // <-- Your Password
 
     // Private constructor to prevent instantiation
     private DBConnector() {}

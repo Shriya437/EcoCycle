@@ -5,21 +5,38 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<BorderPane prefHeight="500.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ecocycle.controller.CartController">
+<BorderPane prefHeight="500.0" prefWidth="600.0" styleClass="root" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ecocycle.controller.CartController">
     <top>
-        <Label text="My Cart" BorderPane.alignment="CENTER">
-            <padding>
-                <Insets bottom="20" top="20" />
-            </padding>
-            <font>
-                <Font name="System Bold" size="24.0" />
-            </font>
-        </Label>
+      <HBox alignment="CENTER">
+         <children>
+            <Region HBox.hgrow="ALWAYS" />
+            <Label styleClass="header-label" text="My Cart">
+               <padding>
+                  <Insets bottom="20" top="20" />
+               </padding>
+               <HBox.margin>
+                  <Insets left="70.0" />
+               </HBox.margin>
+            </Label>
+            <Region HBox.hgrow="ALWAYS" />
+            <ImageView fitHeight="60.0" fitWidth="60.0" pickOnBounds="true" preserveRatio="true" styleClass="logo-image">
+               <image>
+                  <Image url="@images/logo.png" />
+               </image>
+               <HBox.margin>
+                  <Insets right="10.0" />
+               </HBox.margin>
+            </ImageView>
+         </children>
+      </HBox>
     </top>
     <center>
         <TableView fx:id="cartTable">
@@ -34,17 +51,25 @@
         </TableView>
     </center>
     <bottom>
-        <VBox alignment="CENTER" spacing="10.0" prefHeight="100.0">
+        <VBox alignment="CENTER" spacing="10.0" prefHeight="120.0">
             <children>
-                <Label fx:id="totalLabel" text="Total: ₹0.00">
+                <Label fx:id="totalLabel" text="Total Cart Value: ₹0.00">
                     <font>
                         <Font name="System Bold" size="18.0" />
                     </font>
                 </Label>
-                <Label fx:id="infoLabel" textFill="GREEN" />
+                <Label fx:id="infoLabel" styleClass="error-label" />
+                
+                <HBox alignment="CENTER" spacing="20.0">
+                   <children>
+                      <Button fx:id="removeButton" onAction="#handleRemoveItem" prefWidth="150.0" text="Remove Selected" />
+                      <Button fx:id="undoRemoveButton" onAction="#handleUndoRemove" prefWidth="150.0" text="Undo Remove" />
+                   </children>
+                </HBox>
+                
                 <HBox alignment="CENTER" spacing="20.0">
                     <children>
-                        <Button onAction="#handlePurchase" prefWidth="150.0" text="Purchase All" />
+                        <Button fx:id="purchaseButton" onAction="#handlePurchaseSelected" prefWidth="150.0" styleClass="primary-button" text="Purchase Selected" />
                         <Button onAction="#handleBack" prefWidth="150.0" text="Back to Dashboard" />
                     </children>
                 </HBox>

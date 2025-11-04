@@ -16,12 +16,10 @@ public class DashboardController {
 
     @FXML
     private Label welcomeLabel;
-    
     @FXML
     private Label statsLabel;
-
     @FXML
-    private VBox buttonContainer; // The VBox to hold dynamic buttons
+    private VBox buttonContainer;
 
     @FXML
     public void initialize() {
@@ -52,7 +50,6 @@ public class DashboardController {
                 buttonContainer.getChildren().add(createNavButton("Browse Products", this::handleBrowseProducts));
                 buttonContainer.getChildren().add(createNavButton("View My Cart", this::handleViewCart));
                 buttonContainer.getChildren().add(createNavButton("My Transactions", this::handleViewTransactions));
-                // buttonContainer.getChildren().add(createNavButton("Manage My Reviews", this::handleNotImplemented)); // Review logic is complex, stubbed for now
                 break;
             case RECYCLER:
                 statsLabel.setText(String.format("Credits: %.2f", user.getCarbonCredits()));
@@ -60,6 +57,11 @@ public class DashboardController {
                 buttonContainer.getChildren().add(createNavButton("Submit Recycling Proof", this::handleSubmitProof));
                 break;
         }
+        
+        // --- NEW ---
+        // Add "Global Review Feed" button for ALL roles
+        buttonContainer.getChildren().add(createNavButton("View Global Review Feed", this::handleViewReviews));
+        // --- END OF NEW ---
     }
 
     private Button createNavButton(String text, EventHandler<ActionEvent> handler) {
@@ -74,17 +76,14 @@ public class DashboardController {
     void handleViewProducts(ActionEvent event) {
         SceneNavigator.navigateTo(event, "/ecocycle/view/ProductList.fxml");
     }
-
     @FXML
     void handleAddProduct(ActionEvent event) {
         SceneNavigator.navigateTo(event, "/ecocycle/view/AddProduct.fxml");
     }
-    
     @FXML
     void handleManageRecycling(ActionEvent event) {
         SceneNavigator.navigateTo(event, "/ecocycle/view/ManageRecycling.fxml");
     }
-    
     @FXML
     void handleViewBids(ActionEvent event) {
         SceneNavigator.navigateTo(event, "/ecocycle/view/ViewBids.fxml");
@@ -95,12 +94,10 @@ public class DashboardController {
     void handleBrowseProducts(ActionEvent event) {
         SceneNavigator.navigateTo(event, "/ecocycle/view/ProductBrowse.fxml");
     }
-
     @FXML
     void handleViewCart(ActionEvent event) {
         SceneNavigator.navigateTo(event, "/ecocycle/view/Cart.fxml");
     }
-    
     @FXML
     void handleViewTransactions(ActionEvent event) {
         SceneNavigator.navigateTo(event, "/ecocycle/view/TransactionList.fxml");
@@ -111,7 +108,6 @@ public class DashboardController {
     void handleRecyclingMarket(ActionEvent event) {
         SceneNavigator.navigateTo(event, "/ecocycle/view/RecyclingMarket.fxml");
     }
-
     @FXML
     void handleSubmitProof(ActionEvent event) {
         SceneNavigator.navigateTo(event, "/ecocycle/view/SubmitProof.fxml");
@@ -122,17 +118,15 @@ public class DashboardController {
     void handleLeaderboards(ActionEvent event) {
         SceneNavigator.navigateTo(event, "/ecocycle/view/Leaderboard.fxml");
     }
-
     @FXML
     void handleLogout(ActionEvent event) {
         DataService.logout();
         SceneNavigator.navigateTo(event, "/ecocycle/view/Login.fxml");
     }
     
+    // --- NEW METHOD ---
     @FXML
-    void handleNotImplemented(ActionEvent event) {
-        Button b = (Button) event.getSource();
-        b.setText(b.getText() + " (Not Implemented)");
-        b.setDisable(true);
+    void handleViewReviews(ActionEvent event) {
+        SceneNavigator.navigateTo(event, "/ecocycle/view/ReviewFeed.fxml");
     }
 }

@@ -4,12 +4,14 @@ package ecocycle.controller;
 import ecocycle.model.Product;
 import ecocycle.model.RecyclingBid;
 import ecocycle.model.User;
+import ecocycle.model.Role;
 import ecocycle.service.DataService;
 import ecocycle.util.SceneNavigator;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert; // NEW IMPORT
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
@@ -18,8 +20,6 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 
 import java.util.List;
-// We no longer need java.util.Optional
-// import java.util.Optional; 
 
 public class ViewBidsController {
 
@@ -36,10 +36,8 @@ public class ViewBidsController {
 
     @FXML
     public void initialize() {
-        // Load the list of products
         loadBiddableProducts();
 
-        // Use a custom cell factory to show product name and highest bid
         productList.setCellFactory(lv -> new ListCell<>() {
             @Override
             protected void updateItem(Product product, boolean empty) {
@@ -53,7 +51,6 @@ public class ViewBidsController {
             }
         });
 
-        // Add a listener to the selection
         productList.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
             if (newSelection != null) {
                 displayBidDetails(newSelection);
@@ -77,18 +74,8 @@ public class ViewBidsController {
         RecyclingBid highestBid = product.getBids().peek();
         if (highestBid != null) {
             
-            // --- THIS IS THE FIX ---
-            // We now get a User object directly, which might be null.
             User bidder = DataService.findUserById(highestBid.recyclerId());
-            
-            // We must check for null in the traditional way.
-            String bidderName;
-            if (bidder != null) {
-                bidderName = bidder.getUsername();
-            } else {
-                bidderName = "Unknown";
-            }
-            // --- END OF FIX ---
+            String bidderName = (bidder != null) ? bidder.getUsername() : "Unknown";
             
             bidDetailsText.setText(
                 "Product: " + product.getName() + "\n" +
@@ -107,26 +94,31 @@ public class ViewBidsController {
         acceptBidButton.setDisable(true);
     }
 
- // --- THIS IS THE UPDATED METHOD ---
     @FXML
     void handleAcceptBid(ActionEvent event) {
         Product selected = productList.getSelectionModel().getSelectedItem();
         if (selected != null) {
             
-            // Call the updated DataService method
             RecyclingBid winningBid = DataService.acceptBid(selected.getProductId());
             
             if (winningBid != null) {
-                // Find the bidder's name for the success message
                 User bidder = DataService.findUserById(winningBid.recyclerId());
                 String bidderName = (bidder != null) ? bidder.getUsername() : "Unknown";
                 
-                // Professional success message
-                infoLabel.setText(String.format("Sold '%s' to %s for ₹%.2f!",
-                    selected.getName(), bidderName, winningBid.bidPrice()));
+                String successText = String.format("Sold '%s' to %s for ₹%.2f!",
+                    selected.getName(), bidderName, winningBid.bidPrice());
+                
+                infoLabel.setText(successText);
                 infoLabel.setTextFill(Color.GREEN);
                 
-                // Refresh the list
+                // --- THIS IS THE FIX FOR REQ 3 (Seller-side) ---
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Bid Accepted!");
+                alert.setHeaderText("Sale to Recycler Successful!");
+                alert.setContentText(successText);
+                alert.showAndWait();
+                // --- END OF FIX ---
+                
                 loadBiddableProducts();
                 clearBidDetails();
             } else {
