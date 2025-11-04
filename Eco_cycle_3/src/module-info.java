@@ -7,7 +7,7 @@ module Eco_cycle_3 { // Your module name is correct
     // --- JavaFX Modules ---
     requires javafx.controls;
     requires javafx.fxml;
-
+    requires java.sql;
     // --- 'opens' statements ---
     
     // Opens controllers to FXML loader

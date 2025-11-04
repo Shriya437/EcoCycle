@@ -2,15 +2,18 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<BorderPane prefHeight="500.0" prefWidth="700.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ecocycle.controller.ProductBrowseController">
+<BorderPane prefHeight="600.0" prefWidth="750.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ecocycle.controller.ProductBrowseController">
     <top>
         <Label text="Browse Products" BorderPane.alignment="CENTER">
             <padding>
@@ -22,17 +25,35 @@
         </Label>
     </top>
     <center>
-        <TableView fx:id="productTable">
-            <columns>
-                <TableColumn fx:id="nameCol" prefWidth="150.0" text="Name" />
-                <TableColumn fx:id="categoryCol" prefWidth="100.0" text="Category" />
-                <TableColumn fx:id="descCol" prefWidth="200.0" text="Description" />
-                <TableColumn fx:id="priceCol" prefWidth="100.0" text="Price (₹)" />
-            </columns>
-            <BorderPane.margin>
-                <Insets left="20" right="20" />
-            </BorderPane.margin>
-        </TableView>
+      <VBox spacing="15.0">
+         <children>
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+               <children>
+                  <Label text="Category:" />
+                  <ComboBox fx:id="categoryFilterBox" prefWidth="120.0" promptText="All" />
+                  <Label text="Price:" />
+                  <TextField fx:id="minPriceField" prefWidth="70.0" promptText="Min" />
+                  <Label text="-" />
+                  <TextField fx:id="maxPriceField" prefWidth="70.0" promptText="Max" />
+                  <CheckBox fx:id="sortCheckBox" mnemonicParsing="false" text="Sort Low-High" />
+                  <Button onAction="#handleFilterAndSort" text="Filter / Sort" />
+                  <Button onAction="#handleClearFilters" text="Clear" />
+               </children>
+            </HBox>
+            
+            <TableView fx:id="productTable" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn fx:id="nameCol" prefWidth="150.0" text="Name" />
+                    <TableColumn fx:id="categoryCol" prefWidth="100.0" text="Category" />
+                    <TableColumn fx:id="descCol" prefWidth="250.0" text="Description" />
+                    <TableColumn fx:id="priceCol" prefWidth="100.0" text="Price (₹)" />
+                </columns>
+            </TableView>
+         </children>
+         <BorderPane.margin>
+            <Insets left="20" right="20" />
+         </BorderPane.margin>
+      </VBox>
     </center>
     <bottom>
         <VBox alignment="CENTER" spacing="10.0" prefHeight="100.0">
