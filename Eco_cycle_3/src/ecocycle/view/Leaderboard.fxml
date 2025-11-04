@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane prefHeight="500.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ecocycle.controller.LeaderboardController">
+    <top>
+        <Label text="Leaderboards" BorderPane.alignment="CENTER">
+            <padding>
+                <Insets bottom="20" top="20" />
+            </padding>
+            <font>
+                <Font name="System Bold" size="24.0" />
+            </font>
+        </Label>
+    </top>
+    <center>
+        <HBox spacing="20.0">
+            <children>
+                <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                    <children>
+                        <Label text="🏆 Top Sellers (by Sales)">
+                            <font>
+                                <Font name="System Bold" size="16.0" />
+                            </font>
+                        </Label>
+                        <TableView fx:id="sellerTable">
+                            <columns>
+                                <TableColumn fx:id="sellerNameCol" prefWidth="150.0" text="Seller" />
+                                <TableColumn fx:id="sellerSalesCol" prefWidth="100.0" text="Sales (₹)" />
+                            </columns>
+                        </TableView>
+                    </children>
+                </VBox>
+                <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                    <children>
+                        <Label text="♻️ Top Recyclers (by Credits)">
+                            <font>
+                                <Font name="System Bold" size="16.0" />
+                            </font>
+                        </Label>
+                        <TableView fx:id="recyclerTable">
+                            <columns>
+                                <TableColumn fx:id="recyclerNameCol" prefWidth="150.0" text="Recycler" />
+                                <TableColumn fx:id="recyclerCreditsCol" prefWidth="100.0" text="Credits" />
+                            </columns>
+                        </TableView>
+                    </children>
+                </VBox>
+            </children>
+            <BorderPane.margin>
+                <Insets left="20.0" right="20.0" />
+            </BorderPane.margin>
+        </HBox>
+    </center>
+    <bottom>
+        <VBox alignment="CENTER" prefHeight="75.0" BorderPane.alignment="CENTER">
+            <Button onAction="#handleBack" prefWidth="150.0" text="Back to Dashboard" />
+        </VBox>
+    </bottom>
+</BorderPane>

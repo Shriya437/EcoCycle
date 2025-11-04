@@ -3,16 +3,13 @@ package ecocycle.service;
 
 import ecocycle.model.*;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.*; 
+// We no longer need java.util.stream.Collectors
 
 /**
  * Mock Data Service (simulates a DAO/Repository).
- * This class ports ALL logic from the console application.
- * It simulates a database using static Lists and Maps.
- * It also manages the session for the currently logged-in user.
- *
- * LATER, YOU CAN REPLACE THE LOGIC IN THESE METHODS WITH YOUR JDBC QUERIES.
+ * This version uses traditional for-loops and classic data structures
+ * instead of Java Streams, as requested for a college-level project.
  */
 public class DataService {
 
@@ -50,48 +47,63 @@ public class DataService {
         // Init cart/transactions for users
         buyerCarts.put(buyer1.getUserId(), new ArrayList<>());
 
-        // Create sample products for the seller
-        
-        // --- THIS IS THE FIX (in the static block) ---
-        
-        // p1 is AVAILABLE by default, so the 7-arg constructor is perfect.
+        // Create sample products for the seller (FIXED CONSTRUCTOR)
         Product p1 = new Product("p_01", "Old Laptop", "Electronics", "Electronics", 15000.00, "5yr old laptop", "u_s1");
-        
-        // p2 is also AVAILABLE by default.
         Product p2 = new Product("p_02", "Vintage Jeans", "Clothing", "Clothing", 2500.00, "90s denim", "u_s1");
-        
-        // p3 needs to be SOLD. We create it, then set its status.
         Product p3 = new Product("p_03", "Plastic Toys", "Plastic", "Plastic", 500.00, "Bag of toys", "u_s1");
-        p3.setStatus(ProductStatus.SOLD); // Set status after creation
         
-        // Make p2 eligible for recycling demo
+        // Set statuses and timestamps
+        p3.setStatus(ProductStatus.SOLD); 
         long now = System.currentTimeMillis();
         p2.setUploadTimestamp(now - (RECYCLING_THRESHOLDS_MS.get("clothing") + 5000));
-        // p3's timestamp doesn't need to be modified since it's already sold
-
-        // Now add the products to the list
+        
         products.addAll(Arrays.asList(p1, p2, p3));
     }
-    
-    // --- Helper Methods to replace Maps ---
-    private static Optional<User> findUserByUsername(String username) {
-        return users.stream().filter(u -> u.getUsername().equals(username)).findFirst();
+
+    /**
+     * Returns the set of valid, known recycling categories.
+     * This is used to populate the ComboBox in the AddProduct view.
+     * @return A Set of category names (e.g., "clothing", "electronics").
+     */
+    public static Set<String> getRecyclingCategories() {
+        return RECYCLING_THRESHOLDS_MS.keySet();
     }
     
-    public static Optional<User> findUserById(String userId) {
-        return users.stream().filter(u -> u.getUserId().equals(userId)).findFirst();
+    // --- Helper Methods (No Streams) ---
+
+    private static User findUserByUsername(String username) {
+        for (User user : users) {
+            if (user.getUsername().equals(username)) {
+                return user;
+            }
+        }
+        return null;
     }
     
-    public static Optional<Product> findProductById(String productId) {
-        return products.stream().filter(p -> p.getProductId().equals(productId)).findFirst();
+    public static User findUserById(String userId) {
+        for (User user : users) {
+            if (user.getUserId().equals(userId)) {
+                return user;
+            }
+        }
+        return null;
+    }
+    
+    public static Product findProductById(String productId) {
+        for (Product product : products) {
+            if (product.getProductId().equals(productId)) {
+                return product;
+            }
+        }
+        return null;
     }
 
     // --- User & Session Management ---
     
     public static User login(String username, String password) {
-        Optional<User> userOpt = findUserByUsername(username);
-        if (userOpt.isPresent() && userOpt.get().getPassword().equals(password)) {
-            currentUser = userOpt.get();
+        User user = findUserByUsername(username);
+        if (user != null && user.getPassword().equals(password)) {
+            currentUser = user;
             return currentUser;
         }
         currentUser = null;
@@ -107,64 +119,57 @@ public class DataService {
     }
 
     public static boolean register(String username, String password, Role role) {
-        if (findUserByUsername(username).isPresent()) {
-            return false; // Username taken
+        if (findUserByUsername(username) != null) {
+            return false;
         }
         String userId = "u_" + (users.size() + 1);
         User newUser = new User(userId, username, password, role);
         users.add(newUser);
         
-        // Init lists for new users
         if (role == Role.BUYER) {
             buyerCarts.put(userId, new ArrayList<>());
         }
         return true;
     }
 
-    // --- Seller Logic ---
+    // --- Seller Logic (No Streams) ---
 
     public static List<Product> getProductsForCurrentUser() {
-        if (currentUser == null) return new ArrayList<>();
-        return products.stream()
-                .filter(p -> p.getSellerId().equals(currentUser.getUserId()))
-                .collect(Collectors.toList());
+        List<Product> userProducts = new ArrayList<>();
+        if (currentUser == null) return userProducts;
+        
+        for (Product p : products) {
+            if (p.getSellerId().equals(currentUser.getUserId())) {
+                userProducts.add(p);
+            }
+        }
+        return userProducts;
     }
 
-    /**
-     * Adds a new product for the current user.
-     */
     public static void addProduct(String name, String type, String category, double price, String description) {
-        if (currentUser == null) {
-            return; // Can't add if not logged in
-        }
-
-        String productId = "p" + (products.size() + 1);
+        if (currentUser == null) return;
+        String productId = "p_" + (products.size() + 1);
         
-        // --- THIS IS THE FIX (in addProduct) ---
-        // Call the 7-argument constructor
-        Product newProduct = new Product(productId, name, type, category, price, description,
-                currentUser.getUserId()
-        );
-        // The status is already set to AVAILABLE by default inside the constructor
-        
+        Product newProduct = new Product(productId, name, type, category, price, description, currentUser.getUserId());
         products.add(newProduct);
     }
     
     public static void updateProduct(String productId, String newDesc, double newPrice) {
-         findProductById(productId).ifPresent(product -> {
+         Product product = findProductById(productId);
+         if (product != null) {
              if (product.getSellerId().equals(currentUser.getUserId())) {
                  product.setDescription(newDesc);
                  product.setPrice(newPrice);
              }
-         });
+         }
     }
 
     public static boolean deleteProduct(String productId) {
-        Optional<Product> prodOpt = findProductById(productId);
-        if (prodOpt.isEmpty() || !prodOpt.get().getSellerId().equals(currentUser.getUserId())) {
+        Product p = findProductById(productId);
+        if (p == null || !p.getSellerId().equals(currentUser.getUserId())) {
             return false;
         }
-        Product p = prodOpt.get();
+        
         if (p.getStatus() == ProductStatus.AVAILABLE || p.getStatus() == ProductStatus.AVAILABLE_NO_RECYCLE) {
             products.remove(p);
             return true;
@@ -181,48 +186,88 @@ public class DataService {
     }
 
     public static List<Product> getEligibleProductsForApproval() {
-        if (currentUser == null) return new ArrayList<>();
-        return products.stream()
-            .filter(p -> p.getSellerId().equals(currentUser.getUserId()) && isProductEligibleForRecycling(p))
-            .collect(Collectors.toList());
+        List<Product> eligible = new ArrayList<>();
+        if (currentUser == null) return eligible;
+        
+        for (Product p : products) {
+            if (p.getSellerId().equals(currentUser.getUserId()) && isProductEligibleForRecycling(p)) {
+                eligible.add(p);
+            }
+        }
+        return eligible;
     }
 
     public static void updateProductRecyclingStatus(String productId, ProductStatus status) {
-        findProductById(productId).ifPresent(p -> p.setStatus(status));
+        Product p = findProductById(productId);
+        if (p != null) {
+            p.setStatus(status);
+        }
     }
     
     public static List<Product> getBiddableProductsForSeller() {
-        if (currentUser == null) return new ArrayList<>();
-        return products.stream()
-            .filter(p -> p.getSellerId().equals(currentUser.getUserId()) &&
-                         p.getStatus() == ProductStatus.PENDING_RECYCLING &&
-                         !p.getBids().isEmpty())
-            .collect(Collectors.toList());
-    }
-
-    public static void acceptBid(String productId) {
-        findProductById(productId).ifPresent(p -> {
-            if (p.getSellerId().equals(currentUser.getUserId()) && !p.getBids().isEmpty()) {
-                p.getBids().poll(); 
-                p.setStatus(ProductStatus.RECYCLING_PURCHASED);
+        List<Product> biddable = new ArrayList<>();
+        if (currentUser == null) return biddable;
+        
+        for (Product p : products) {
+            if (p.getSellerId().equals(currentUser.getUserId()) &&
+                p.getStatus() == ProductStatus.PENDING_RECYCLING &&
+                !p.getBids().isEmpty()) {
+                biddable.add(p);
             }
-        });
+        }
+        return biddable;
     }
 
-    // --- Buyer Logic ---
+    /**
+     * THIS METHOD IS NOW FIXED (from previous step)
+     * It now updates seller sales and returns the winning bid.
+     */
+    public static RecyclingBid acceptBid(String productId) {
+        Product p = findProductById(productId);
+        if (p != null) {
+            if (p.getSellerId().equals(currentUser.getUserId()) && !p.getBids().isEmpty()) {
+                
+                // 1. Get the winning bid *without* removing it
+                RecyclingBid winningBid = p.getBids().peek();
+                
+                // 2. Find the seller
+                User seller = findUserById(p.getSellerId());
+                if (seller != null) {
+                    // 3. Add the bid price to the seller's total sales
+                    seller.setTotalSales(seller.getTotalSales() + winningBid.bidPrice());
+                }
+                
+                // 4. Now remove the bid
+                p.getBids().poll(); 
+                
+                // 5. Update status
+                p.setStatus(ProductStatus.RECYCLING_PURCHASED);
+                
+                // 6. Return the bid so the controller can show who won
+                return winningBid; 
+            }
+        }
+        return null; // Return null on failure
+    }
+
+    // --- Buyer Logic (No Streams) ---
 
     public static List<Product> getAvailableProducts() {
-        return products.stream()
-            .filter(p -> p.getStatus() == ProductStatus.AVAILABLE || p.getStatus() == ProductStatus.AVAILABLE_NO_RECYCLE)
-            .collect(Collectors.toList());
+        List<Product> available = new ArrayList<>();
+        for (Product p : products) {
+            if (p.getStatus() == ProductStatus.AVAILABLE || p.getStatus() == ProductStatus.AVAILABLE_NO_RECYCLE) {
+                available.add(p);
+            }
+        }
+        return available;
     }
 
     public static boolean addToCart(String productId) {
-        Optional<Product> prodOpt = findProductById(productId);
-        if (prodOpt.isEmpty() || currentUser == null || currentUser.getRole() != Role.BUYER) {
+        Product p = findProductById(productId);
+        if (p == null || currentUser == null || currentUser.getRole() != Role.BUYER) {
             return false;
         }
-        Product p = prodOpt.get();
+        
         if (p.getStatus() == ProductStatus.AVAILABLE || p.getStatus() == ProductStatus.AVAILABLE_NO_RECYCLE) {
             buyerCarts.get(currentUser.getUserId()).add(productId);
             return true;
@@ -231,14 +276,17 @@ public class DataService {
     }
     
     public static List<Product> getCart() {
-        if (currentUser == null || currentUser.getRole() != Role.BUYER) return new ArrayList<>();
+        List<Product> cartProducts = new ArrayList<>();
+        if (currentUser == null || currentUser.getRole() != Role.BUYER) return cartProducts;
         
         List<String> productIds = buyerCarts.get(currentUser.getUserId());
-        return productIds.stream()
-                .map(DataService::findProductById)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList());
+        for (String pid : productIds) {
+            Product p = findProductById(pid);
+            if (p != null) {
+                cartProducts.add(p);
+            }
+        }
+        return cartProducts;
     }
     
     public static boolean purchaseCart() {
@@ -246,16 +294,18 @@ public class DataService {
         List<String> cartItems = new ArrayList<>(buyerCarts.get(currentUser.getUserId()));
         
         for (String pid : cartItems) {
-            Optional<Product> prodOpt = findProductById(pid);
-            if (prodOpt.isPresent()) {
-                Product p = prodOpt.get();
+            Product p = findProductById(pid);
+            if (p != null) {
                 if (p.getStatus() == ProductStatus.AVAILABLE || p.getStatus() == ProductStatus.AVAILABLE_NO_RECYCLE) {
                     p.setStatus(ProductStatus.SOLD);
                     
-                    findUserById(p.getSellerId()).ifPresent(seller -> 
-                        seller.setTotalSales(seller.getTotalSales() + p.getPrice()));
+                    User seller = findUserById(p.getSellerId());
+                    if (seller != null) {
+                        seller.setTotalSales(seller.getTotalSales() + p.getPrice());
+                    }
                     
                     String tid = "t_" + (transactions.size() + 1);
+                    // Use the 'new Transaction()' constructor
                     transactions.add(new Transaction(tid, currentUser.getUserId(), pid, p.getPrice(), 
                                      System.currentTimeMillis(), TransactionStatus.COMPLETED));
                 }
@@ -264,22 +314,54 @@ public class DataService {
         buyerCarts.get(currentUser.getUserId()).clear();
         return true;
     }
+    
+    /**
+     * THIS METHOD IS NOW FIXED (from record to class)
+     * Gets all transactions for the current buyer using a for-loop.
+     */
+    public static List<Transaction> getTransactionsForBuyer() {
+        List<Transaction> userTransactions = new ArrayList<>();
+        if (currentUser == null || currentUser.getRole() != Role.BUYER) {
+            return userTransactions;
+        }
+        
+        for (Transaction t : transactions) {
+            // FIX: Changed t.buyerId() to t.getBuyerId()
+            if (t.getBuyerId().equals(currentUser.getUserId())) {
+                userTransactions.add(t);
+            }
+        }
+        
+        // Sort by newest first
+        Collections.sort(userTransactions, new Comparator<Transaction>() {
+            @Override
+            public int compare(Transaction t1, Transaction t2) {
+                // FIX: Changed t.timestamp() to t.getTimestamp()
+                return Long.compare(t2.getTimestamp(), t1.getTimestamp());
+            }
+        });
+        
+        return userTransactions;
+    }
 
-    // --- Recycler Logic ---
+    // --- Recycler Logic (No Streams) ---
 
     public static List<Product> getEligibleProductsForBidding() {
-        return products.stream()
-            .filter(p -> p.getStatus() == ProductStatus.PENDING_RECYCLING)
-            .collect(Collectors.toList());
+        List<Product> eligible = new ArrayList<>();
+        for (Product p : products) {
+            if (p.getStatus() == ProductStatus.PENDING_RECYCLING) {
+                eligible.add(p);
+            }
+        }
+        return eligible;
     }
     
     public static boolean placeBid(String productId, double bidPrice) {
         if (currentUser == null || currentUser.getRole() != Role.RECYCLER) return false;
         
-        Optional<Product> prodOpt = findProductById(productId);
-        if (prodOpt.isEmpty()) return false;
+        Product p = findProductById(productId);
+        if (p == null) return false;
         
-        Product p = prodOpt.get();
         if (p.getStatus() != ProductStatus.PENDING_RECYCLING) return false;
         
         if (bidPrice >= p.getBaseCost()) {
@@ -290,19 +372,23 @@ public class DataService {
     }
     
     public static List<Product> getAcquiredProducts() {
-        if (currentUser == null) return new ArrayList<>();
-        return products.stream()
-            .filter(p -> p.getStatus() == ProductStatus.RECYCLING_PURCHASED)
-            .collect(Collectors.toList());
+        List<Product> acquired = new ArrayList<>();
+        if (currentUser == null) return acquired;
+
+        for (Product p : products) {
+            if (p.getStatus() == ProductStatus.RECYCLING_PURCHASED) {
+                acquired.add(p);
+            }
+        }
+        return acquired;
     }
     
     public static boolean submitRecyclingProof(String productId) {
         if (currentUser == null) return false;
         
-        Optional<Product> prodOpt = findProductById(productId);
-        if (prodOpt.isEmpty()) return false;
+        Product p = findProductById(productId);
+        if (p == null) return false;
         
-        Product p = prodOpt.get();
         if (p.getStatus() != ProductStatus.RECYCLING_PURCHASED) {
             return false;
         }
@@ -314,27 +400,50 @@ public class DataService {
         double sellerShare = totalCredits * 0.30;
         
         currentUser.setCarbonCredits(currentUser.getCarbonCredits() + recyclerShare);
-        findUserById(p.getSellerId()).ifPresent(seller -> 
-            seller.setCarbonCredits(seller.getCarbonCredits() + sellerShare));
+        
+        User seller = findUserById(p.getSellerId());
+        if (seller != null) {
+            seller.setCarbonCredits(seller.getCarbonCredits() + sellerShare);
+        }
             
         return true;
     }
     
-    // --- Shared Logic ---
+    // --- Shared Logic (No Streams) ---
 
     public static List<User> getSellerLeaderboard() {
-        return users.stream()
-            .filter(u -> u.getRole() == Role.SELLER)
-            .sorted(Comparator.comparingDouble(User::getTotalSales).reversed())
-            .collect(Collectors.toList());
+        List<User> sellers = new ArrayList<>();
+        for (User u : users) {
+            if (u.getRole() == Role.SELLER) {
+                sellers.add(u);
+            }
+        }
+        
+        Collections.sort(sellers, new Comparator<User>() {
+            @Override
+            public int compare(User u1, User u2) {
+                return Double.compare(u2.getTotalSales(), u1.getTotalSales());
+            }
+        });
+        
+        return sellers;
     }
     
     public static List<User> getRecyclerLeaderboard() {
-        return users.stream()
-            .filter(u -> u.getRole() == Role.RECYCLER)
-            .sorted(Comparator.comparingDouble(User::getCarbonCredits).reversed())
-            .collect(Collectors.toList());
+        List<User> recyclers = new ArrayList<>();
+        for (User u : users) {
+            if (u.getRole() == Role.RECYCLER) {
+                recyclers.add(u);
+            }
+        }
+        
+        Collections.sort(recyclers, new Comparator<User>() {
+            @Override
+            public int compare(User u1, User u2) {
+                return Double.compare(u2.getCarbonCredits(), u1.getCarbonCredits());
+            }
+        });
+        
+        return recyclers;
     }
-
-
 }

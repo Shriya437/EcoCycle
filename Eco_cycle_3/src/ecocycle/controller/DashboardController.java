@@ -1,3 +1,4 @@
+// In file: src/ecocycle/controller/DashboardController.java
 package ecocycle.controller;
 
 import ecocycle.model.Role;
@@ -22,31 +23,20 @@ public class DashboardController {
     @FXML
     private VBox buttonContainer; // The VBox to hold dynamic buttons
 
-    /**
-     * Initializes the dashboard.
-     * Fetches the current user and sets the welcome message.
-     * Dynamically adds buttons based on the user's role.
-     */
     @FXML
     public void initialize() {
         User user = DataService.getCurrentUser();
         if (user != null) {
             welcomeLabel.setText("Welcome, " + user.getUsername() + "!");
-            // Build the UI based on user role
             buildRoleDashboard(user);
         } else {
-            // Fallback, should not be reachable if login is required
             welcomeLabel.setText("Welcome, Guest!");
             statsLabel.setText("");
         }
     }
 
-    /**
-     * Dynamically creates and adds buttons to the dashboard
-     * based on the user's role.
-     */
     private void buildRoleDashboard(User user) {
-        buttonContainer.getChildren().clear(); // Clear any existing buttons
+        buttonContainer.getChildren().clear();
         
         switch (user.getRole()) {
             case SELLER:
@@ -59,22 +49,19 @@ public class DashboardController {
                 break;
             case BUYER:
                 statsLabel.setText(String.format("Credits: %.2f", user.getCarbonCredits()));
-                buttonContainer.getChildren().add(createNavButton("Browse Products", this::handleNotImplemented));
-                buttonContainer.getChildren().add(createNavButton("View My Cart", this::handleNotImplemented));
-                buttonContainer.getChildren().add(createNavButton("My Transactions", this::handleNotImplemented));
-                buttonContainer.getChildren().add(createNavButton("Manage My Reviews", this::handleNotImplemented));
+                buttonContainer.getChildren().add(createNavButton("Browse Products", this::handleBrowseProducts));
+                buttonContainer.getChildren().add(createNavButton("View My Cart", this::handleViewCart));
+                buttonContainer.getChildren().add(createNavButton("My Transactions", this::handleViewTransactions));
+                // buttonContainer.getChildren().add(createNavButton("Manage My Reviews", this::handleNotImplemented)); // Review logic is complex, stubbed for now
                 break;
             case RECYCLER:
                 statsLabel.setText(String.format("Credits: %.2f", user.getCarbonCredits()));
-                buttonContainer.getChildren().add(createNavButton("View Recycling Market", this::handleNotImplemented));
-                buttonContainer.getChildren().add(createNavButton("Submit Recycling Proof", this::handleNotImplemented));
+                buttonContainer.getChildren().add(createNavButton("View Recycling Market", this::handleRecyclingMarket));
+                buttonContainer.getChildren().add(createNavButton("Submit Recycling Proof", this::handleSubmitProof));
                 break;
         }
     }
 
-    /**
-     * Helper method to create a styled navigation button.
-     */
     private Button createNavButton(String text, EventHandler<ActionEvent> handler) {
         Button button = new Button(text);
         button.setPrefWidth(250.0);
@@ -102,12 +89,38 @@ public class DashboardController {
     void handleViewBids(ActionEvent event) {
         SceneNavigator.navigateTo(event, "/ecocycle/view/ViewBids.fxml");
     }
+
+    // --- Buyer Actions ---
+    @FXML
+    void handleBrowseProducts(ActionEvent event) {
+        SceneNavigator.navigateTo(event, "/ecocycle/view/ProductBrowse.fxml");
+    }
+
+    @FXML
+    void handleViewCart(ActionEvent event) {
+        SceneNavigator.navigateTo(event, "/ecocycle/view/Cart.fxml");
+    }
     
+    @FXML
+    void handleViewTransactions(ActionEvent event) {
+        SceneNavigator.navigateTo(event, "/ecocycle/view/TransactionList.fxml");
+    }
+
+    // --- Recycler Actions ---
+    @FXML
+    void handleRecyclingMarket(ActionEvent event) {
+        SceneNavigator.navigateTo(event, "/ecocycle/view/RecyclingMarket.fxml");
+    }
+
+    @FXML
+    void handleSubmitProof(ActionEvent event) {
+        SceneNavigator.navigateTo(event, "/ecocycle/view/SubmitProof.fxml");
+    }
+
     // --- Shared Actions ---
     @FXML
     void handleLeaderboards(ActionEvent event) {
-        // You would create Leaderboard.fxml and its controller
-        System.out.println("Leaderboard navigation not implemented yet.");
+        SceneNavigator.navigateTo(event, "/ecocycle/view/Leaderboard.fxml");
     }
 
     @FXML
@@ -116,10 +129,8 @@ public class DashboardController {
         SceneNavigator.navigateTo(event, "/ecocycle/view/Login.fxml");
     }
     
-    // --- Placeholder for Buyer/Recycler actions ---
     @FXML
     void handleNotImplemented(ActionEvent event) {
-        // A simple way to stub features
         Button b = (Button) event.getSource();
         b.setText(b.getText() + " (Not Implemented)");
         b.setDisable(true);

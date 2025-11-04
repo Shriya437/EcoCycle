@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane prefHeight="500.0" prefWidth="700.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ecocycle.controller.SubmitProofController">
+    <top>
+        <Label text="Submit Recycling Proof" BorderPane.alignment="CENTER">
+            <padding>
+                <Insets bottom="20" top="20" />
+            </padding>
+            <font>
+                <Font name="System Bold" size="24.0" />
+            </font>
+        </Label>
+    </top>
+    <center>
+        <VBox spacing="10.0">
+            <children>
+                <Label text="These are products you have successfully bid on and purchased." />
+                <TableView fx:id="acquiredTable" prefHeight="300.0">
+                    <columns>
+                        <TableColumn fx:id="idCol" prefWidth="100.0" text="Product ID" />
+                        <TableColumn fx:id="nameCol" prefWidth="200.0" text="Name" />
+                        <TableColumn fx:id="categoryCol" prefWidth="150.0" text="Category" />
+                        <TableColumn fx:id="statusCol" prefWidth="180.0" text="Status" />
+                    </columns>
+                </TableView>
+                <HBox alignment="CENTER" spacing="20.0">
+                    <children>
+                        <Button onAction="#handleSubmitProof" text="Submit Recycling Proof for Selected" />
+                    </children>
+                    <VBox.margin>
+                        <Insets top="10.0" />
+                    </VBox.margin>
+                </HBox>
+                <Label fx:id="infoLabel" alignment="CENTER" contentDisplay="CENTER" prefWidth="660.0" />
+            </children>
+            <BorderPane.margin>
+                <Insets left="20.0" right="20.0" />
+            </BorderPane.margin>
+        </VBox>
+    </center>
+    <bottom>
+        <VBox alignment="CENTER" prefHeight="75.0" BorderPane.alignment="CENTER">
+            <Button onAction="#handleBack" prefWidth="150.0" text="Back to Dashboard" />
+        </VBox>
+    </bottom>
+</BorderPane>

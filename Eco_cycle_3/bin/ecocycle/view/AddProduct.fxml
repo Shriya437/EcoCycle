@@ -2,6 +2,7 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
@@ -23,7 +24,7 @@
     </Label>
     <GridPane hgap="10" vgap="15">
         <columnConstraints>
-            <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+            <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="120.0" />
             <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="300.0" />
         </columnConstraints>
         <rowConstraints>
@@ -39,11 +40,11 @@
         <Label text="Product Name:" GridPane.rowIndex="0" />
         <TextField fx:id="nameField" promptText="e.g., Old Laptop" GridPane.columnIndex="1" GridPane.rowIndex="0" />
         
-        <Label text="Type:" GridPane.rowIndex="1" />
-        <TextField fx:id="typeField" promptText="e.g., Electronics" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+        <Label text="Category (Broad):" GridPane.rowIndex="1" />
+        <ComboBox fx:id="categoryComboBox" prefWidth="300.0" promptText="Select a category..." GridPane.columnIndex="1" GridPane.rowIndex="1" />
         
-        <Label text="Category:" GridPane.rowIndex="2" />
-        <TextField fx:id="categoryField" promptText="e.g., Computers" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+        <Label text="Type (Specific):" GridPane.rowIndex="2" />
+        <TextField fx:id="typeField" promptText="e.g., Dell XPS, Levi's 501, etc." GridPane.columnIndex="1" GridPane.rowIndex="2" />
         
         <Label text="Price (₹):" GridPane.rowIndex="3" />
         <TextField fx:id="priceField" promptText="e.g., 15000" GridPane.columnIndex="1" GridPane.rowIndex="3" />

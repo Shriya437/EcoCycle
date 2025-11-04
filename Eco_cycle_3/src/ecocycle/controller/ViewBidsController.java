@@ -18,7 +18,8 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 
 import java.util.List;
-import java.util.Optional;
+// We no longer need java.util.Optional
+// import java.util.Optional; 
 
 public class ViewBidsController {
 
@@ -75,8 +76,19 @@ public class ViewBidsController {
     private void displayBidDetails(Product product) {
         RecyclingBid highestBid = product.getBids().peek();
         if (highestBid != null) {
-            Optional<User> bidderOpt = DataService.findUserById(highestBid.recyclerId());
-            String bidderName = bidderOpt.isPresent() ? bidderOpt.get().getUsername() : "Unknown";
+            
+            // --- THIS IS THE FIX ---
+            // We now get a User object directly, which might be null.
+            User bidder = DataService.findUserById(highestBid.recyclerId());
+            
+            // We must check for null in the traditional way.
+            String bidderName;
+            if (bidder != null) {
+                bidderName = bidder.getUsername();
+            } else {
+                bidderName = "Unknown";
+            }
+            // --- END OF FIX ---
             
             bidDetailsText.setText(
                 "Product: " + product.getName() + "\n" +
@@ -95,17 +107,32 @@ public class ViewBidsController {
         acceptBidButton.setDisable(true);
     }
 
+ // --- THIS IS THE UPDATED METHOD ---
     @FXML
     void handleAcceptBid(ActionEvent event) {
         Product selected = productList.getSelectionModel().getSelectedItem();
         if (selected != null) {
-            DataService.acceptBid(selected.getProductId());
-            infoLabel.setText("Bid for '" + selected.getName() + "' accepted!");
-            infoLabel.setTextFill(Color.GREEN);
             
-            // Refresh the list
-            loadBiddableProducts();
-            clearBidDetails();
+            // Call the updated DataService method
+            RecyclingBid winningBid = DataService.acceptBid(selected.getProductId());
+            
+            if (winningBid != null) {
+                // Find the bidder's name for the success message
+                User bidder = DataService.findUserById(winningBid.recyclerId());
+                String bidderName = (bidder != null) ? bidder.getUsername() : "Unknown";
+                
+                // Professional success message
+                infoLabel.setText(String.format("Sold '%s' to %s for ₹%.2f!",
+                    selected.getName(), bidderName, winningBid.bidPrice()));
+                infoLabel.setTextFill(Color.GREEN);
+                
+                // Refresh the list
+                loadBiddableProducts();
+                clearBidDetails();
+            } else {
+                infoLabel.setText("Error: Could not accept bid.");
+                infoLabel.setTextFill(Color.RED);
+            }
         }
     }
 

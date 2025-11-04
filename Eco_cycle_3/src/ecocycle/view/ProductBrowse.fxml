@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane prefHeight="500.0" prefWidth="700.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ecocycle.controller.ProductBrowseController">
+    <top>
+        <Label text="Browse Products" BorderPane.alignment="CENTER">
+            <padding>
+                <Insets bottom="20" top="20" />
+            </padding>
+            <font>
+                <Font name="System Bold" size="24.0" />
+            </font>
+        </Label>
+    </top>
+    <center>
+        <TableView fx:id="productTable">
+            <columns>
+                <TableColumn fx:id="nameCol" prefWidth="150.0" text="Name" />
+                <TableColumn fx:id="categoryCol" prefWidth="100.0" text="Category" />
+                <TableColumn fx:id="descCol" prefWidth="200.0" text="Description" />
+                <TableColumn fx:id="priceCol" prefWidth="100.0" text="Price (₹)" />
+            </columns>
+            <BorderPane.margin>
+                <Insets left="20" right="20" />
+            </BorderPane.margin>
+        </TableView>
+    </center>
+    <bottom>
+        <VBox alignment="CENTER" spacing="10.0" prefHeight="100.0">
+            <children>
+                <Label fx:id="infoLabel" />
+                <HBox alignment="CENTER" spacing="20.0">
+                    <children>
+                        <Button onAction="#handleAddToCart" prefWidth="150.0" text="Add to Cart" />
+                        <Button onAction="#handleBack" prefWidth="150.0" text="Back to Dashboard" />
+                    </children>
+                </HBox>
+            </children>
+        </VBox>
+    </bottom>
+</BorderPane>
