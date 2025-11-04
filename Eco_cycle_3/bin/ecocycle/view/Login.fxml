@@ -10,14 +10,24 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox alignment="CENTER" spacing="20.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ecocycle.controller.LoginController">
+<VBox 
+    xmlns="http://javafx.com/javafx/21" 
+    xmlns:fx="http://javafx.com/fxml/1"
+    fx:controller="ecocycle.controller.LoginController"
+    alignment="CENTER" 
+    spacing="20.0"
+    prefHeight="450.0" 
+    prefWidth="400.0"
+    stylesheets="@style.css" 
+    styleClass="root-pane">
+
     <padding>
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
     </padding>
 
     <Label text="EcoCycle Login">
       <font>
-         <Font name="System Bold" size="24.0" />
+          <Font name="System Bold" size="24.0" />
       </font>
     </Label>
 
@@ -31,7 +41,6 @@
 
         <Label text="Password:" GridPane.rowIndex="1" GridPane.columnIndex="0" />
         <PasswordField fx:id="passwordField" promptText="Enter password" GridPane.rowIndex="1" GridPane.columnIndex="1" />
-
     </GridPane>
 
     <Button onAction="#handleLogin" prefWidth="200.0" text="Login" />
