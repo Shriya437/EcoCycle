@@ -44,8 +44,8 @@
                 <TableColumn fx:id="productNameCol" prefWidth="150.0" text="Product" />
                 <TableColumn fx:id="sellerNameCol" prefWidth="125.0" text="Seller" />
                 <TableColumn fx:id="buyerNameCol" prefWidth="125.0" text="Buyer" />
-                <TableColumn fx:id="ratingCol" prefWidth="75.0" text="Rating" />
-                <TableColumn fx:id="reviewCol" prefWidth="300.0" text="Review" />
+                
+                <TableColumn fx:id="reviewCol" prefWidth="375.0" text="Review" />
             </columns>
             <BorderPane.margin>
                 <Insets left="20" right="20" />

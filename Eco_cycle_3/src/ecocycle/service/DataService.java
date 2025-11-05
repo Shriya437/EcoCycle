@@ -9,7 +9,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp; // Keep this for the transactions table
+import java.sql.Timestamp; // This is needed
 import java.util.*;
 
 /**
@@ -106,7 +106,7 @@ public class DataService {
      * Loads existing reviews from the DB into the LinkedList cache on startup.
      */
     private static void loadReviewFeedCache() {
-        String sql = "SELECT review_id, product_id, buyer_id, text, timestamp FROM reviews ORDER BY timestamp DESC";
+        String sql = "SELECT * FROM reviews ORDER BY timestamp DESC";
         try (Connection con = DBConnector.getConnection();
              PreparedStatement pstmt = con.prepareStatement(sql);
              ResultSet rs = pstmt.executeQuery()) {
@@ -119,8 +119,8 @@ public class DataService {
                     rs.getString("text")
                 );
                 
-                // --- FIX #1: Read a long, not a Timestamp ---
-                review.setTimestamp(rs.getLong("timestamp"));
+                // --- FIX #1: Read a Timestamp from the DB, convert to long ---
+                review.setTimestamp(rs.getTimestamp("timestamp").getTime());
                 
                 globalReviewFeed.add(review);
             }
@@ -701,7 +701,7 @@ public class DataService {
             pstmt.setString(1, currentUser.getUserId());
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    // Read Timestamp from DB, convert to long
+                    
                     long timestamp = rs.getTimestamp("timestamp").getTime();
                     
                     userTransactions.add(new Transaction(
@@ -709,7 +709,7 @@ public class DataService {
                         rs.getString("buyer_id"),
                         rs.getString("product_id"),
                         rs.getDouble("price"),
-                        timestamp, // Use the converted long
+                        timestamp,
                         TransactionStatus.valueOf(rs.getString("status"))
                     ));
                 }
@@ -839,6 +839,14 @@ public class DataService {
             }
             
             con.commit();
+            
+            // --- FIX FOR PROBLEM 2 ---
+            // Refresh the static currentUser object with the new credit total
+            if (currentUser != null) {
+                currentUser = findUserById(currentUser.getUserId());
+            }
+            // --- END OF FIX ---
+            
             return true;
             
         } catch (SQLException e) {
@@ -976,7 +984,7 @@ public class DataService {
             pstmt.setString(3, currentUser.getUserId());
             pstmt.setString(4, text);
             
-            // --- FIX: Use setTimestamp, not setLong ---
+            // --- FIX #4: Use setTimestamp (for reviews table) ---
             pstmt.setTimestamp(5, new java.sql.Timestamp(timestamp)); 
             
             int rowsAffected = pstmt.executeUpdate();

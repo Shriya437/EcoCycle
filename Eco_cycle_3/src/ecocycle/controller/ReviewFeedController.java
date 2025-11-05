@@ -27,7 +27,7 @@ public class ReviewFeedController {
     @FXML
     private TableColumn<Review, String> sellerNameCol; 
     
-    // --- 'ratingCol' has been REMOVED ---
+    // --- 'ratingCol' @FXML field has been REMOVED ---
 
     @FXML
     public void initialize() {
